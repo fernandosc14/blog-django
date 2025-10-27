@@ -7,14 +7,18 @@ ENV PYTHONUNBUFFERED 1
 
 COPY djangoapp /djangoapp
 COPY scripts /scripts
+COPY requirements.txt /requirements.txt
 
 WORKDIR /djangoapp
 
 EXPOSE 8000
 
-RUN python -m venv /venv && \
+RUN apk add --no-cache postgresql-libs && \
+  apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev libffi-dev && \
+  python -m venv /venv && \
   /venv/bin/pip install --upgrade pip && \
-  /venv/bin/pip install -r /djangoapp/requirements.txt && \
+  /venv/bin/pip install -r /requirements.txt && \
+  apk del .build-deps && \
   adduser --disabled-password --no-create-home duser && \
   mkdir -p /data/web/static && \
   mkdir -p /data/web/media && \
