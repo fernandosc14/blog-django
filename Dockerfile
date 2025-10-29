@@ -13,11 +13,11 @@ WORKDIR /djangoapp
 
 EXPOSE 8000
 
-RUN apk add --no-cache postgresql-libs && \
-  apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev libffi-dev && \
+RUN apk add --no-cache postgresql-libs libjpeg-turbo zlib freetype lcms2 libwebp tiff && \
+  apk add --no-cache --virtual .build-deps gcc musl-dev postgresql-dev libffi-dev jpeg-dev zlib-dev freetype-dev lcms2-dev libwebp-dev tiff-dev && \
   python -m venv /venv && \
   /venv/bin/pip install --upgrade pip && \
-  /venv/bin/pip install -r /requirements.txt && \
+  /venv/bin/pip install -r /requirements.txt -r /djangoapp/requirements.txt && \
   apk del .build-deps && \
   adduser --disabled-password --no-create-home duser && \
   mkdir -p /data/web/static && \
