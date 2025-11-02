@@ -100,7 +100,6 @@ class CreatedByListView(PostListView):
 
         return super().get(request, *args, **kwargs)
 
-
 def category(request, slug):
     posts = Post.objects.get_published().filter(category__slug=slug)
     
@@ -121,6 +120,24 @@ def category(request, slug):
             'page_title': page_title,
         }
     )
+
+class CategoryListView(PostListView):
+    allow_empty = False
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            category__slug=self.kwargs.get('slug')
+        )
+    
+    def get_context_data(self, **kwargs):
+        ctx =  super().get_context_data(**kwargs)
+        
+        page_title = f"Category - {self.object_list[0].category.name} - "
+        ctx.update({
+            'page_title': page_title,
+        })
+
+        return ctx
 
 def tag(request, slug):
     posts = Post.objects.get_published().filter(tags__slug=slug)
