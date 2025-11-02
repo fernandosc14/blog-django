@@ -4,8 +4,7 @@ from blog.models import Post, Page
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.db.models.query import QuerySet
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404
 from django.shortcuts import render
 from django.views.generic import ListView
 
@@ -100,27 +99,6 @@ class CreatedByListView(PostListView):
 
         return super().get(request, *args, **kwargs)
 
-def category(request, slug):
-    posts = Post.objects.get_published().filter(category__slug=slug)
-    
-    paginator = Paginator(posts, PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    if len(page_obj) == 0:
-        raise Http404("Category does not exist")
-
-    page_title = f"Category - {page_obj[0].category.name} - "
-
-    return render(
-        request,
-        'blog/pages/index.html',
-        {
-            'page_obj': page_obj,
-            'page_title': page_title,
-        }
-    )
-
 class CategoryListView(PostListView):
     allow_empty = False
 
@@ -131,7 +109,7 @@ class CategoryListView(PostListView):
     
     def get_context_data(self, **kwargs):
         ctx =  super().get_context_data(**kwargs)
-        
+
         page_title = f"Category - {self.object_list[0].category.name} - "
         ctx.update({
             'page_title': page_title,
@@ -139,26 +117,23 @@ class CategoryListView(PostListView):
 
         return ctx
 
-def tag(request, slug):
-    posts = Post.objects.get_published().filter(tags__slug=slug)
+class TagListView(PostListView):
+    allow_empty = False
 
-    paginator = Paginator(posts, PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            tags__slug=self.kwargs.get('slug')
+        )
+    
+    def get_context_data(self, **kwargs):
+        ctx =  super().get_context_data(**kwargs)
 
-    if len(page_obj) == 0:
-        raise Http404("Tag does not exist")
-
-    page_title = f"Tag - {page_obj[0].tags.first().name} - "
-
-    return render(
-        request,
-        'blog/pages/index.html',
-        {
-            'page_obj': page_obj,
+        page_title = f"Tag - {self.object_list[0].tags.first().name} - "
+        ctx.update({
             'page_title': page_title,
-        }
-    )
+        })
+
+        return ctx
 
 def search(request):
     search_value = request.GET.get('search', '').strip()
