@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import Http404
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.generic import ListView
 
 PER_PAGE = 9
@@ -135,26 +135,38 @@ class TagListView(PostListView):
 
         return ctx
 
-def search(request):
-    search_value = request.GET.get('search', '').strip()
+class SearchListView(PostListView):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._search_value = ''
 
-    posts = Post.objects.get_published().filter(
+    def setup(self, request, *args, **kwargs):
+        self._search_value = request.GET.get('search', '').strip()
+        return super().setup(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        search_value = self._search_value
+        return super().get_queryset().filter(
         Q(title__icontains=search_value) | 
         Q(excerpt__icontains=search_value) | 
         Q(content__icontains=search_value)
     )[0:PER_PAGE]
 
-    page_title = f"Search - {search_value[:30]} - "
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
 
-    return render(
-        request,
-        'blog/pages/index.html',
-        {
-            'page_obj': posts,
-            'search_value': search_value,
+        page_title = f"Search - {self._search_value[:30]} - "
+        ctx.update({
             'page_title': page_title,
-        }
-    )
+            'search_value': self._search_value,
+        })
+
+        return ctx
+    
+    def get(self, request, *args, **kwargs):
+        if self._search_value == '':
+            return redirect('blog:index')
+        return super().get(request, *args, **kwargs)
 
 def page(request, slug):
     page_obj = Page.objects.filter(is_published=True).filter(slug=slug).first()
