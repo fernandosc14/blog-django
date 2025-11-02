@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Dict
 
 from blog.models import Post, Page
 from django.contrib.auth.models import User
-from django.core.paginator import Paginator
 from django.db.models import Q
+from django.db.models.query import QuerySet
 from django.http import Http404
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.views.generic import ListView, DetailView
 
 PER_PAGE = 9
@@ -24,34 +24,6 @@ class PostListView(ListView):
         })
 
         return context
-
-def created_by(request, author_pk):
-    user = User.objects.filter(pk=author_pk).first()
-
-    if user is None:
-        raise Http404("User does not exist")
-
-    posts = Post.objects.get_published().filter(created_by__pk=author_pk)
-    
-    user_full_name = user.username
-
-    if (user.first_name and user.last_name):
-        user_full_name = f"{user.first_name} {user.last_name}"
-    
-    page_title = f"Posts by {user_full_name} - "
-
-    paginator = Paginator(posts, PER_PAGE)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    return render(
-        request,
-        'blog/pages/index.html',
-        {
-            'page_obj': page_obj,
-            'page_title': page_title,
-        }
-    )
 
 class CreatedByListView(PostListView):
     def __init__(self, **kwargs: Any) -> None:
@@ -144,7 +116,7 @@ class SearchListView(PostListView):
         self._search_value = request.GET.get('search', '').strip()
         return super().setup(request, *args, **kwargs)
     
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Any]:
         search_value = self._search_value
         return super().get_queryset().filter(
         Q(title__icontains=search_value) | 
@@ -174,7 +146,7 @@ class PageDetailView(DetailView):
     slug_field = 'slug'
     context_object_name = 'page'
 
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
         page = self.get_object()
         page_title = f"Page - {page.title} - "
@@ -186,19 +158,19 @@ class PageDetailView(DetailView):
     def get_queryset(self):
         return super().get_queryset().filter(is_published=True)
 
-def post(request, slug):
-    post_obj = Post.objects.get_published().filter(slug=slug).first()
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'blog/pages/post.html'
+    context_object_name = 'post'
 
-    if post_obj is None:
-        raise Http404("Post does not exist")
-
-    page_title = f"Post - {post_obj.title} - "
+    def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        post = self.get_object()
+        page_title = f"Post - {post.title} - "
+        ctx.update({
+            'page_title': page_title,
+        })
+        return ctx
     
-    return render(
-        request,
-        'blog/pages/post.html',
-        {
-            'post': post_obj,
-            'page_title': page_title
-        }
-    )
+    def get_queryset(self):
+        return super().get_queryset().filter(is_published=True)
